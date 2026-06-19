@@ -182,7 +182,8 @@ client.on('interactionCreate', async (interaction) => {
         // ── نظام المزادات ──
         if (id.startsWith('auction_')) {
             if (id === 'auction_buy_start')  return auctionHandler.handleAuctionStart(interaction);
-            if (id === 'auction_show_prices') return auctionHandler.handleShowPrices(interaction);
+            if (id === 'auction_show_prices')  return auctionHandler.handleShowPrices(interaction);
+            if (id === 'auction_room_status')  return auctionHandler.handleRoomStatus(interaction);
             if (id === 'auction_mention_everyone') return auctionHandler.handleMentionSelection(interaction, 'everyone');
             if (id === 'auction_mention_here')     return auctionHandler.handleMentionSelection(interaction, 'here');
             if (id === 'auction_close_ticket') {
@@ -244,7 +245,12 @@ client.on('messageCreate', async (message) => {
         // ── رسائل أنظمة المتاجر ──
         for (const mod of storeModules) {
             if (typeof mod.handleMessage === 'function') {
-                await mod.handleMessage(message).catch(e => console.error(`❌ [handleMessage] ${e.message}`));
+                try {
+                    const result = mod.handleMessage(message);
+                    if (result && typeof result.catch === 'function') await result;
+                } catch (e) {
+                    console.error(`❌ [handleMessage] ${e.message}`);
+                }
             }
         }
 

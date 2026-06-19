@@ -1,1 +1,23 @@
-[]
+[
+  {
+    "timestamp": "2026-06-19T19:11:47.976Z",
+    "userId": "1222904544938295338",
+    "selectedMention": "here",
+    "mentionPrice": 1000000,
+    "mentionLabel": "@here",
+    "verificationCode": 913,
+    "step": "WAITING_PAYMENT",
+    "duration": "1",
+    "totalPrice": 2000913,
+    "savedAt": "2026-06-19T19:11:47.976Z"
+  },
+  {
+    "timestamp": "2026-06-19T19:12:19.281Z",
+    "userId": "1222904544938295338",
+    "amount": 2000913,
+    "channelId": "1517607786282881134",
+    "mention": "@here",
+    "duration": "1",
+    "status": "payment_confirmed"
+  }
+]
