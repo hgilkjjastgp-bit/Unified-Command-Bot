@@ -197,14 +197,17 @@ async function handleMentionSelection(interaction, type) {
             step:           'SELECT_DURATION'
         });
 
+        const d = cfg.durations;
+        const mp = cfg.mentionPrices[type];
         const welcomeEmbed = new EmbedBuilder()
             .setTitle('👋 مرحباً بك في تكت المزاد')
             .setDescription(
                 `مرحباً <@${user.id}>!\n\n` +
+                `📢 **المنشن المختار:** \`${mp.label}\` — \`${mp.displayPrice}\` كريدت\n\n` +
                 `اكتب **رقم المدة** اللي تبيها هنا:\n\n` +
-                `**1️⃣** — 5 دقائق > 1 انعاش\n` +
-                `**2️⃣** — 10 دقائق > 2 انعاش\n` +
-                `**3️⃣** — 15 دقيقة > 3 انعاش`
+                `**1️⃣** — ${d['1'].description} — \`${d['1'].displayPrice}\` كريدت\n` +
+                `**2️⃣** — ${d['2'].description} — \`${d['2'].displayPrice}\` كريدت\n` +
+                `**3️⃣** — ${d['3'].description} — \`${d['3'].displayPrice}\` كريدت`
             )
             .setColor('#2b2d31');
 

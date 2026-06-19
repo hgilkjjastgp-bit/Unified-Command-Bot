@@ -3,7 +3,8 @@
 // ═══════════════════════════════════════════════
 
 const { EmbedBuilder } = require('discord.js');
-const config = require('../../config.js');
+const config  = require('../../config.js');
+const tracker = require('./transferTracker.js');
 
 const BANK_CHANNEL_ID = config.stores.bankChannelId;
 const LOG_CHANNEL_ID  = config.stores.logChannelId;
@@ -219,6 +220,9 @@ module.exports = {
         } catch (error) {
             console.error(`[dbManager] خطأ في تنفيذ "${actionType}":`, error);
         }
+
+        // احذف رسالة التحويل القابلة للنسخ عند تأكيد الدفع
+        if (transaction.verificationCode) tracker.remove(transaction.verificationCode);
 
         store.pendingTransactions = null;
         if (global.saveStoresData) global.saveStoresData();

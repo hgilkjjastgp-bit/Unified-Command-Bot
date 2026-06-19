@@ -6,12 +6,18 @@ const {
     EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
     ChannelType, PermissionFlagsBits
 } = require('discord.js');
-const config = require('../../config.js');
+const config  = require('../../config.js');
+const tracker = require('./transferTracker.js');
 const { createDefaultStoreData } = require('./storesData.js');
 
-const cfg = config.stores;
+const cfg    = config.stores;
+const OWNER  = config.ownerId;
 let ticketCounter = 0;
+
+// Map: userId -> { channelId, category, transferMsgCode }
 const activePurchases = new Map();
+// Map: userId -> verificationCode used for the ticket transfer msg
+const ticketTransferCodes = new Map();
 
 // ── إرسال لوحة شراء المتاجر ──
 async function sendStorePanel(channel) {
@@ -40,7 +46,7 @@ async function sendStorePanel(channel) {
 async function handleTicketButton(interaction) {
     if (!interaction.customId.startsWith('store_ticket_')) return;
 
-    const type = interaction.customId.replace('store_ticket_', '');
+    const type        = interaction.customId.replace('store_ticket_', '');
     const selectedCat = cfg.categories[type];
     if (!selectedCat) return;
 
@@ -53,39 +59,67 @@ async function handleTicketButton(interaction) {
             type: ChannelType.GuildText,
             parent: cfg.ticketsCategoryId,
             permissionOverwrites: [
-                { id: interaction.guild.id,   deny:  [PermissionFlagsBits.ViewChannel] },
-                { id: interaction.user.id,    allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] },
-                { id: interaction.client.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] },
-                { id: cfg.staffRoleId,        allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] }
+                { id: interaction.guild.id,       deny:  [PermissionFlagsBits.ViewChannel] },
+                { id: interaction.user.id,         allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] },
+                { id: interaction.client.user.id,  allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] },
+                { id: cfg.staffRoleId,             allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] }
             ]
         });
 
         const welcomeEmbed = new EmbedBuilder()
             .setTitle('🎟️ تذكرة شراء متجر')
-            .setDescription(`مرحباً ${interaction.user}!\n\nأهلاً بك في نظام شراء المتاجر.\nلو عندك أسئلة انتظر المسؤولين.\n\n🗂️ **نوع المتجر المختار:** \`${selectedCat.name}\``)
-            .setColor('#5865f2')
-            .setFooter({ text: 'سيتم إرسال كود التحويل بالأسفل' });
+            .setDescription(
+                `مرحباً ${interaction.user}!\n\n` +
+                `أهلاً بك في نظام شراء المتاجر.\n` +
+                `لو عندك أسئلة انتظر المسؤولين.\n\n` +
+                `🗂️ **نوع المتجر المختار:** \`${selectedCat.name}\`\n` +
+                `💰 **السعر:** \`${selectedCat.price.toLocaleString()}\` كريدت`
+            )
+            .setColor('#5865f2');
 
         const lockRow = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId(`store_lock_ticket_${ticketChannel.id}`).setLabel('🔒 قفل التذكرة').setStyle(ButtonStyle.Danger)
+            new ButtonBuilder()
+                .setCustomId(`store_lock_ticket_${ticketChannel.id}`)
+                .setLabel('🔒 قفل التذكرة')
+                .setStyle(ButtonStyle.Danger)
         );
 
-        await ticketChannel.send({ content: `${interaction.user} <@&${cfg.staffRoleId}>`, embeds: [welcomeEmbed], components: [lockRow] });
+        await ticketChannel.send({
+            content: `${interaction.user} <@&${cfg.staffRoleId}>`,
+            embeds: [welcomeEmbed],
+            components: [lockRow]
+        });
 
-        const priceWithTax  = Math.ceil(selectedCat.price / 0.95);
-        const transferCode  = `c ${config.ownerId} ${priceWithTax}`;
-        const transferEmbed = new EmbedBuilder()
-            .setTitle('💸 كود التحويل')
-            .setDescription(`لإتمام الشراء، حوّل المبلغ في روم الأوامر <#${cfg.bankChannelId}>:\n\n\`\`\`${transferCode}\`\`\`\n\n⚠️ البوت يراقب الروم تلقائياً — بعد التحويل سيطلب منك اسم متجرك هنا!`)
-            .setColor('#ffcc00');
+        // ── فاتورة مخفية (إبليمرال) ──
+        const code         = Math.floor(100 + Math.random() * 900);
+        const priceWithTax = Math.ceil((selectedCat.price + code) / 0.95);
+        const transferText = `c ${OWNER} ${priceWithTax}`;
 
-        await ticketChannel.send({ embeds: [transferEmbed] });
+        const invoiceEmbed = new EmbedBuilder()
+            .setTitle('🧾 فاتورة شراء المتجر')
+            .setDescription(
+                `🗂️ **النوع:** \`${selectedCat.name}\`\n` +
+                `💰 **المبلغ المطلوب:** \`${priceWithTax.toLocaleString()}\` كريدت\n` +
+                `📋 **كود التحقق:** \`${code}\`\n\n` +
+                `📥 حوّل في <#${cfg.bankChannelId}> — انسخ الرسالة التالية:`
+            )
+            .setColor('#ffcc00')
+            .setFooter({ text: 'رسالة التحويل تُحذف تلقائياً بعد دقيقة إن لم تدفع' });
+
+        await ticketChannel.send({ embeds: [invoiceEmbed] });
+
+        // ── رسالة التحويل المرئية القابلة للنسخ ──
+        const visibleMsg = await ticketChannel.send({ content: transferText });
+        tracker.track(code, visibleMsg);
+        ticketTransferCodes.set(interaction.user.id, code);
+
         await interaction.editReply({ content: `✅ تم فتح تذكرتك: ${ticketChannel}`, flags: 64 });
 
         activePurchases.set(interaction.user.id, {
-            channelId: ticketChannel.id,
-            category:  selectedCat,
-            userId:    interaction.user.id
+            channelId:  ticketChannel.id,
+            category:   selectedCat,
+            userId:     interaction.user.id,
+            code
         });
 
     } catch (err) {
@@ -115,17 +149,17 @@ async function monitorStorePurchases(message) {
     const lower   = msgText.toLowerCase();
     if (!lower.includes('has transferred') && !lower.includes('قام بتحويل') && !lower.includes('حوّل')) return;
 
-    const amountClean  = msgText.replace(/[$,]/g, '');
-    const match        = amountClean.match(/\d+/g);
+    const amountClean = msgText.replace(/[$,]/g, '');
+    const match       = amountClean.match(/\d+/g);
     if (!match) return;
-    const transferred  = parseInt(match[match.length - 1]);
+    const transferred = parseInt(match[match.length - 1]);
 
     let purchaseData = null;
     let buyerUserId  = null;
 
     for (const [userId, data] of activePurchases.entries()) {
-        const targetPriceWithTax = Math.ceil(data.category.price / 0.95);
-        if (transferred === targetPriceWithTax || transferred >= data.category.price) {
+        const expectedAmount = Math.ceil((data.category.price + data.code) / 0.95);
+        if (Math.abs(transferred - expectedAmount) <= 2 || transferred >= data.category.price) {
             purchaseData = data;
             buyerUserId  = userId;
             break;
@@ -133,6 +167,10 @@ async function monitorStorePurchases(message) {
     }
 
     if (!purchaseData) return;
+
+    // احذف رسالة التحويل عند الدفع
+    if (purchaseData.code) tracker.remove(purchaseData.code);
+    ticketTransferCodes.delete(buyerUserId);
 
     const targetChannel = message.guild.channels.cache.get(purchaseData.channelId);
     if (!targetChannel) return;
@@ -163,9 +201,9 @@ async function createStoreChannel(guild, purchaseData, storeName, client) {
         type: ChannelType.GuildText,
         parent: purchaseData.category.id,
         permissionOverwrites: [
-            { id: guild.id,             allow: [PermissionFlagsBits.ViewChannel], deny: [PermissionFlagsBits.SendMessages] },
-            { id: purchaseData.userId,  allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.MentionEveryone] },
-            { id: client.user.id,       allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] }
+            { id: guild.id,            allow: [PermissionFlagsBits.ViewChannel], deny: [PermissionFlagsBits.SendMessages] },
+            { id: purchaseData.userId, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.MentionEveryone] },
+            { id: client.user.id,      allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages] }
         ]
     });
 
@@ -180,8 +218,8 @@ async function createStoreChannel(guild, purchaseData, storeName, client) {
         .setTitle(`🏪 متجر » ${purchaseData.category.emoji} • ${storeName}`)
         .setDescription(
             `⚠️ **ملاحظة:** يجب الإلتزام بتشفير الكلمات لتجنب إخفاء رومك.\n\n` +
-            `👑 • **صاحب الـمـتـجـر:** <@${purchaseData.userId}>\n` +
-            `🗂️ • **نوع الـمـتـجـر:** \`< ${purchaseData.category.name} Stores >\`\n` +
+            `👑 • **صاحب المتجر:** <@${purchaseData.userId}>\n` +
+            `🗂️ • **نوع المتجر:** \`< ${purchaseData.category.name} Stores >\`\n` +
             `📆 • **تاريخ الإنشاء:** اليوم`
         )
         .setColor('#2f3136')
@@ -194,15 +232,22 @@ async function createStoreChannel(guild, purchaseData, storeName, client) {
     await newStore.send({ content: `<@${purchaseData.userId}>`, embeds: [storeEmbed] });
     await newStore.send({ content: line });
 
+    // ── شرح أمر "منشن" الإداري ──
     const tutorialEmbed = new EmbedBuilder()
-        .setTitle('👋 مرحبًا بك في متجرك الجديد!')
+        .setTitle('📋 كيف تتحكم في متجرك؟')
         .setDescription(
-            `يا غالي، لكي تتحكم في منشنات متجرك، وتشتري رصيدًا، أو تفعّل الخط والنشر التلقائي، قم بكتابة كلمة **\`منشن\`** هنا في الشات لفتح لوحة التحكم المركزية!\n\n` +
-            `⚠️ **ملاحظة:** بعد كتابة الأمر، انتظر 5 دقائق بين كل مرة لمنع السبام. بالتوفيق! ✨`
+            `يا غالي، لفتح لوحة تحكم متجرك اكتب كلمة **\`منشن\`** هنا في الشات.\n\n` +
+            `**من اللوحة تقدر:**\n` +
+            `🛒 شراء منشنات @everyone أو @here\n` +
+            `⚙️ تغيير اسم المتجر أو مالكه أو فئته\n` +
+            `🚀 تفعيل النشر التلقائي\n` +
+            `🎁 شراء بوكس الخصم (20٪)\n` +
+            `🛡️ إزالة التحذيرات\n\n` +
+            `⏱️ **ملاحظة:** انتظر 5 دقائق بين كل مرة تفتح اللوحة.`
         )
         .setColor('#00ffcc');
 
-    await newStore.send({ embeds: [tutorialEmbed] }).catch(() => {});
+    await newStore.send({ content: `<@${purchaseData.userId}>`, embeds: [tutorialEmbed] }).catch(() => {});
 }
 
 module.exports = { sendStorePanel, handleTicketButton, handleLockTicket, monitorStorePurchases };

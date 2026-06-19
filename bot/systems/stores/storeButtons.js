@@ -6,8 +6,13 @@ const {
     EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
     ModalBuilder, TextInputBuilder, TextInputStyle
 } = require('discord.js');
+const config    = require('../../config.js');
 const dbManager = require('./dbManager.js');
+const tracker   = require('./transferTracker.js');
 const { encryptText } = require('./autoPostManager.js');
+
+const OWNER_ID = config.ownerId;
+const BANK_CH  = config.stores.bankChannelId;
 
 function getDiscountedPrice(storeData, basePrice, actionType) {
     if (!storeData.discountBox || storeData.discountBox.usedCount === 0) return basePrice;
@@ -16,6 +21,28 @@ function getDiscountedPrice(storeData, basePrice, actionType) {
     const eligible = ['buy_mentions', 'remove_warnings', 'change_store_type', 'buy_autopost'];
     if (eligible.includes(actionType)) return Math.floor(basePrice * 0.80);
     return basePrice;
+}
+
+// ── إرسال فاتورة (مخفية) + رسالة تحويل مرئية قابلة للنسخ ──
+async function sendInvoiceWithTransfer(interaction, { title, lines, basePrice, code }) {
+    const finalAmount = Math.ceil((basePrice + code) / 0.95);
+    const transferText = `c ${OWNER_ID} ${finalAmount}`;
+
+    const invoiceEmbed = new EmbedBuilder()
+        .setTitle(`🧾 ${title}`)
+        .setDescription(
+            lines.join('\n') + '\n\n' +
+            `💰 **المبلغ المطلوب:** \`${finalAmount.toLocaleString()}\` كريدت\n` +
+            `📋 **كود التحقق:** \`${code}\`\n\n` +
+            `📥 حوّل في <#${BANK_CH}> — انسخ الرسالة التالية:`
+        )
+        .setColor('#2b2d31')
+        .setFooter({ text: 'رسالة التحويل تُحذف تلقائياً بعد دقيقة إن لم تدفع' });
+
+    await interaction.editReply({ embeds: [invoiceEmbed], flags: 64 });
+
+    const visibleMsg = await interaction.channel.send({ content: transferText });
+    tracker.track(code, visibleMsg);
 }
 
 const _processedMsgIds = new Set();
@@ -100,7 +127,7 @@ module.exports = {
         if (interaction.isModalSubmit() && interaction.customId === 'store_modal_encrypt') {
             await interaction.deferReply({ flags: 64 });
             const rawText = interaction.fields.getTextInputValue('text_to_encrypt');
-            return interaction.editReply({ content: encryptText(rawText), flags: 64 });
+            return interaction.editReply({ content: encryptText(rawText) });
         }
 
         // ─── إعدادات المتجر ───
@@ -152,13 +179,13 @@ module.exports = {
         if (interaction.customId === 'store_ment_buy_everyone' || interaction.customId === 'store_ment_buy_here') {
             const mType = interaction.customId === 'store_ment_buy_everyone' ? 'everyone' : 'here';
             const countRow = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId(`store_order_ment_${mType}_1`).setLabel('1 🔢').setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId(`store_order_ment_${mType}_2`).setLabel('2 🔢').setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId(`store_order_ment_${mType}_3`).setLabel('3 🔢').setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId(`store_order_ment_${mType}_4`).setLabel('4 🔢').setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId(`store_order_ment_${mType}_5`).setLabel('5 🔢').setStyle(ButtonStyle.Primary)
+                new ButtonBuilder().setCustomId(`store_order_ment_${mType}_1`).setLabel('1️⃣').setStyle(ButtonStyle.Primary),
+                new ButtonBuilder().setCustomId(`store_order_ment_${mType}_2`).setLabel('2️⃣').setStyle(ButtonStyle.Primary),
+                new ButtonBuilder().setCustomId(`store_order_ment_${mType}_3`).setLabel('3️⃣').setStyle(ButtonStyle.Primary),
+                new ButtonBuilder().setCustomId(`store_order_ment_${mType}_4`).setLabel('4️⃣').setStyle(ButtonStyle.Primary),
+                new ButtonBuilder().setCustomId(`store_order_ment_${mType}_5`).setLabel('5️⃣').setStyle(ButtonStyle.Primary)
             );
-            return interaction.update({ content: `🔢 اختر كمية منشنات \`@${mType}\` للشحن:`, embeds: [], components: [countRow], flags: 64 });
+            return interaction.update({ content: `🔢 اختر كمية منشنات \`@${mType}\` للشحن:`, embeds: [], components: [countRow] });
         }
 
         if (interaction.customId.startsWith('store_order_ment_')) {
@@ -169,11 +196,16 @@ module.exports = {
             const singlePrice = mentionType === 'everyone' ? 600000 : 500000;
             const basePrice   = getDiscountedPrice(storeData, singlePrice * count, 'buy_mentions');
             const code        = dbManager.createPendingTransaction(channelId, interaction.user.id, basePrice, 'buy_mentions', { mentionType, count });
-            const finalAmount = Math.ceil((basePrice + code) / 0.95);
-            return interaction.editReply({
-                content: `🛒 **فاتورة شراء ${count} منشن @${mentionType}:**\n• السعر: \`${basePrice.toLocaleString()}\` كريدت\n• كود التحقق: \`${code}\`\n\n📥 **انسخ الكود في روم الأوامر:**\n\`\`\`\nC ${require('../../config.js').ownerId} ${finalAmount}\n\`\`\``,
-                flags: 64
+            await sendInvoiceWithTransfer(interaction, {
+                title: `شراء ${count} منشن @${mentionType}`,
+                lines: [
+                    `📢 **النوع:** \`@${mentionType}\``,
+                    `🔢 **الكمية:** \`${count}\` منشن`,
+                    `💵 **السعر الأساسي:** \`${basePrice.toLocaleString()}\` كريدت`
+                ],
+                basePrice, code
             });
+            return;
         }
 
         // ─── تغيير الاسم ───
@@ -191,11 +223,12 @@ module.exports = {
             const newName   = interaction.fields.getTextInputValue('new_name');
             const basePrice = 300000;
             const code      = dbManager.createPendingTransaction(channelId, interaction.user.id, basePrice, 'change_name', { newName });
-            const finalAmount = Math.ceil((basePrice + code) / 0.95);
-            return interaction.editReply({
-                content: `📝 **فاتورة تغيير اسم المتجر:**\n• الاسم الجديد: \`${newName}\`\n• السعر: \`${basePrice.toLocaleString()}\` كريدت\n• كود التحقق: \`${code}\`\n\n📥 **انسخ الكود في روم الأوامر:**\n\`\`\`\nC ${require('../../config.js').ownerId} ${finalAmount}\n\`\`\``,
-                flags: 64
+            await sendInvoiceWithTransfer(interaction, {
+                title: 'تغيير اسم المتجر',
+                lines: [`📝 **الاسم الجديد:** \`${newName}\``],
+                basePrice, code
             });
+            return;
         }
 
         // ─── تغيير المالك ───
@@ -210,26 +243,28 @@ module.exports = {
 
         if (interaction.isModalSubmit() && interaction.customId === 'store_modal_change_owner') {
             await interaction.deferReply({ flags: 64 });
-            const newOwnerId  = interaction.fields.getTextInputValue('new_owner_id').trim();
-            const basePrice   = 500000;
-            const code        = dbManager.createPendingTransaction(channelId, interaction.user.id, basePrice, 'change_owner', { newOwnerId });
-            const finalAmount = Math.ceil((basePrice + code) / 0.95);
-            return interaction.editReply({
-                content: `👑 **فاتورة نقل ملكية المتجر:**\n• المالك الجديد: \`${newOwnerId}\`\n• السعر: \`${basePrice.toLocaleString()}\` كريدت\n• كود التحقق: \`${code}\`\n\n📥 **انسخ الكود في روم الأوامر:**\n\`\`\`\nC ${require('../../config.js').ownerId} ${finalAmount}\n\`\`\``,
-                flags: 64
+            const newOwnerId = interaction.fields.getTextInputValue('new_owner_id').trim();
+            const basePrice  = 500000;
+            const code       = dbManager.createPendingTransaction(channelId, interaction.user.id, basePrice, 'change_owner', { newOwnerId });
+            await sendInvoiceWithTransfer(interaction, {
+                title: 'نقل ملكية المتجر',
+                lines: [`👑 **المالك الجديد:** \`${newOwnerId}\``],
+                basePrice, code
             });
+            return;
         }
 
         // ─── إزالة تحذير ───
         if (interaction.customId === 'store_opt_remove_warnings') {
             await interaction.deferReply({ flags: 64 });
-            const basePrice   = getDiscountedPrice(storeData, 400000, 'remove_warnings');
-            const code        = dbManager.createPendingTransaction(channelId, interaction.user.id, basePrice, 'remove_warnings', { count: 1 });
-            const finalAmount = Math.ceil((basePrice + code) / 0.95);
-            return interaction.editReply({
-                content: `🛡️ **فاتورة إزالة تحذير واحد:**\n• السعر: \`${basePrice.toLocaleString()}\` كريدت\n• كود التحقق: \`${code}\`\n\n📥 **انسخ الكود في روم الأوامر:**\n\`\`\`\nC ${require('../../config.js').ownerId} ${finalAmount}\n\`\`\``,
-                flags: 64
+            const basePrice = getDiscountedPrice(storeData, 400000, 'remove_warnings');
+            const code      = dbManager.createPendingTransaction(channelId, interaction.user.id, basePrice, 'remove_warnings', { count: 1 });
+            await sendInvoiceWithTransfer(interaction, {
+                title: 'إزالة تحذير واحد',
+                lines: [`🛡️ **التحذيرات الحالية:** \`${storeData.warnings || 0} / 5\``],
+                basePrice, code
             });
+            return;
         }
 
         // ─── النشر التلقائي ───
@@ -243,7 +278,7 @@ module.exports = {
         }
 
         if (interaction.customId.startsWith('store_autopost_')) {
-            const plan = interaction.customId.replace('store_autopost_', '');
+            const plan  = interaction.customId.replace('store_autopost_', '');
             const modal = new ModalBuilder().setCustomId(`store_modal_autopost_${plan}`).setTitle('🚀 بيانات النشر التلقائي');
             modal.addComponents(
                 new ActionRowBuilder().addComponents(
@@ -268,36 +303,44 @@ module.exports = {
             const labelMap    = { day: 'يوم واحد', day2: 'يومين', week: 'أسبوع كامل' };
             const basePrice   = getDiscountedPrice(storeData, priceMap[plan] ?? 700000, 'buy_autopost');
             const code        = dbManager.createPendingTransaction(channelId, interaction.user.id, basePrice, 'buy_autopost', { planType: plan, text: postText, mentionType, allowChange: true });
-            const finalAmount = Math.ceil((basePrice + code) / 0.95);
-            return interaction.editReply({
-                content: `🚀 **فاتورة النشر التلقائي:**\n• الباقة: \`${labelMap[plan]}\`\n• المنشن: \`@${mentionType}\`\n• السعر: \`${basePrice.toLocaleString()}\` كريدت\n• كود التحقق: \`${code}\`\n\n📥 **انسخ الكود في روم الأوامر:**\n\`\`\`\nC ${require('../../config.js').ownerId} ${finalAmount}\n\`\`\``,
-                flags: 64
+            await sendInvoiceWithTransfer(interaction, {
+                title: 'النشر التلقائي',
+                lines: [
+                    `🚀 **الباقة:** \`${labelMap[plan]}\``,
+                    `📢 **المنشن:** \`@${mentionType}\``
+                ],
+                basePrice, code
             });
+            return;
         }
 
         // ─── الخط التلقائي ───
         if (interaction.customId === 'store_opt_buy_line') {
             if (storeData.settings?.autoLine) return interaction.reply({ content: '❌ الخط التلقائي مفعل مسبقاً!', flags: 64 });
-            const basePrice   = 100000;
-            const code        = dbManager.createPendingTransaction(channelId, interaction.user.id, basePrice, 'buy_autoline');
-            const finalAmount = Math.ceil((basePrice + code) / 0.95);
-            return interaction.reply({
-                content: `🎨 **فاتورة تفعيل الخط التلقائي:**\n• السعر: \`100,000\` كريدت\n• كود التحقق: \`${code}\`\n\n📥 **انسخ الكود في روم الأوامر:**\n\`\`\`\nC ${require('../../config.js').ownerId} ${finalAmount}\n\`\`\``,
-                flags: 64
+            await interaction.deferReply({ flags: 64 });
+            const basePrice = 100000;
+            const code      = dbManager.createPendingTransaction(channelId, interaction.user.id, basePrice, 'buy_autoline');
+            await sendInvoiceWithTransfer(interaction, {
+                title: 'تفعيل الخط التلقائي',
+                lines: [`🎨 **الخدمة:** خط فاصل تلقائي بعد كل منشن`],
+                basePrice, code
             });
+            return;
         }
 
         // ─── بوكس الخصم ───
         if (interaction.customId === 'store_opt_buy_discount') {
             const hasDiscount = storeData.discountBox?.usedCount > 0 && (Date.now() - storeData.discountBox.lastUsedTime < 172800000);
             if (hasDiscount) return interaction.reply({ content: '❌ لديك بوكس خصم فعال حالياً!', flags: 64 });
-            const basePrice   = 500000;
-            const code        = dbManager.createPendingTransaction(channelId, interaction.user.id, basePrice, 'buy_discount_box');
-            const finalAmount = Math.ceil((basePrice + code) / 0.95);
-            return interaction.reply({
-                content: `🎁 **فاتورة بوكس الخصم (20٪):**\n• السعر: \`500,000\` كريدت\n• كود التحقق: \`${code}\`\n\n📥 **انسخ الكود في روم الأوامر:**\n\`\`\`\nC ${require('../../config.js').ownerId} ${finalAmount}\n\`\`\``,
-                flags: 64
+            await interaction.deferReply({ flags: 64 });
+            const basePrice = 500000;
+            const code      = dbManager.createPendingTransaction(channelId, interaction.user.id, basePrice, 'buy_discount_box');
+            await sendInvoiceWithTransfer(interaction, {
+                title: 'بوكس الخصم (20٪)',
+                lines: [`🎁 **الخدمة:** خصم 20٪ لمدة 48 ساعة على كل العمليات`],
+                basePrice, code
             });
+            return;
         }
 
         // ─── تغيير نوع المتجر ───
@@ -309,29 +352,33 @@ module.exports = {
                 برونزي:   getDiscountedPrice(storeData, 1000000, 'change_store_type')
             };
             const typeRow  = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId(`store_type_VIP_${prices['VIP']}`).setLabel('👑 VIP').setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId(`store_type_دايموند_${prices['دايموند']}`).setLabel('💎 دايموند').setStyle(ButtonStyle.Success)
+                new ButtonBuilder().setCustomId(`store_type_VIP_${prices['VIP']}`).setLabel(`👑 VIP — ${(prices['VIP']/1000000).toFixed(1)}m`).setStyle(ButtonStyle.Primary),
+                new ButtonBuilder().setCustomId(`store_type_دايموند_${prices['دايموند']}`).setLabel(`💎 دايموند — ${(prices['دايموند']/1000000).toFixed(1)}m`).setStyle(ButtonStyle.Success)
             );
             const typeRow2 = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId(`store_type_ذهبي_${prices['ذهبي']}`).setLabel('🎖 ذهبي').setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId(`store_type_برونزي_${prices['برونزي']}`).setLabel('🥉 برونزي').setStyle(ButtonStyle.Danger)
+                new ButtonBuilder().setCustomId(`store_type_ذهبي_${prices['ذهبي']}`).setLabel(`🎖 ذهبي — ${(prices['ذهبي']/1000000).toFixed(1)}m`).setStyle(ButtonStyle.Primary),
+                new ButtonBuilder().setCustomId(`store_type_برونزي_${prices['برونزي']}`).setLabel(`🥉 برونزي — ${(prices['برونزي']/1000000).toFixed(1)}m`).setStyle(ButtonStyle.Danger)
             );
-            return interaction.update({ content: `فئة متجرك الحالية: \`${storeData.storeType}\`. اختر الفئة الجديدة:`, embeds: [], components: [typeRow, typeRow2], flags: 64 });
+            return interaction.update({ content: `فئة متجرك الحالية: \`${storeData.storeType}\`. اختر الفئة الجديدة:`, embeds: [], components: [typeRow, typeRow2] });
         }
 
         if (interaction.customId.startsWith('store_type_')) {
             await interaction.deferReply({ flags: 64 });
-            const parts       = interaction.customId.split('_');
-            const newType     = parts[2];
-            const rawPrice    = parseInt(parts[3]);
-            if (storeData.storeType === newType) return interaction.editReply({ content: '❌ متجرك مسجل بالفعل على نفس الفئة!', flags: 64 });
-            const finalPrice  = getDiscountedPrice(storeData, rawPrice, 'change_store_type');
-            const code        = dbManager.createPendingTransaction(channelId, interaction.user.id, finalPrice, 'change_store_type', { newType });
-            const finalAmount = Math.ceil((finalPrice + code) / 0.95);
-            return interaction.editReply({
-                content: `⚡ **فاتورة تغيير فئة المتجر إلى \`${newType}\`:**\n• السعر: \`${finalPrice.toLocaleString()}\` كريدت\n• كود التحقق: \`${code}\`\n\n📥 **انسخ الكود في روم الأوامر:**\n\`\`\`\nC ${require('../../config.js').ownerId} ${finalAmount}\n\`\`\``,
-                flags: 64
+            const parts    = interaction.customId.split('_');
+            const newType  = parts[2];
+            const rawPrice = parseInt(parts[3]);
+            if (storeData.storeType === newType) return interaction.editReply({ content: '❌ متجرك مسجل بالفعل على نفس الفئة!' });
+            const finalPrice = getDiscountedPrice(storeData, rawPrice, 'change_store_type');
+            const code       = dbManager.createPendingTransaction(channelId, interaction.user.id, finalPrice, 'change_store_type', { newType });
+            await sendInvoiceWithTransfer(interaction, {
+                title: `تغيير فئة المتجر إلى ${newType}`,
+                lines: [
+                    `⚡ **الفئة الحالية:** \`${storeData.storeType}\``,
+                    `🆕 **الفئة الجديدة:** \`${newType}\``
+                ],
+                basePrice: finalPrice, code
             });
+            return;
         }
 
         // ─── حذف المتجر ───
@@ -339,7 +386,7 @@ module.exports = {
             const confirmRow = new ActionRowBuilder().addComponents(
                 new ButtonBuilder().setCustomId('store_confirm_delete').setLabel('⚠️ نعم، احذف المتجر!').setStyle(ButtonStyle.Danger)
             );
-            return interaction.update({ content: '🚨 **تحذير:** هل أنت متأكد من حذف متجرك نهائياً؟ هذا الإجراء لا يمكن التراجع عنه!', embeds: [], components: [confirmRow], flags: 64 });
+            return interaction.update({ content: '🚨 **تحذير:** هل أنت متأكد من حذف متجرك نهائياً؟ هذا الإجراء لا يمكن التراجع عنه!', embeds: [], components: [confirmRow] });
         }
 
         if (interaction.customId === 'store_confirm_delete') {
