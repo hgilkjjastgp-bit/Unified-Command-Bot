@@ -3,7 +3,6 @@
 //         يجمع: نظام المنشورات | نظام المزادات | نظام المتاجر
 // ═══════════════════════════════════════════════════════════════
 
-require('dotenv').config();
 const { Client, Collection, GatewayIntentBits, Partials, REST, Routes } = require('discord.js');
 const fs   = require('fs');
 const path = require('path');
