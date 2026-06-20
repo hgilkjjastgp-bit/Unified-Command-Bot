@@ -79,6 +79,17 @@ module.exports = {
         if (global.saveStoresData) global.saveStoresData();
         message.delete().catch(() => {});
 
+        // ── حذف أي لوحة قديمة لتجنب التكرار ──
+        try {
+            const old = await message.channel.messages.fetch({ limit: 15 });
+            const panels = old.filter(m =>
+                m.author.bot &&
+                m.components?.length > 0 &&
+                m.components[0]?.components?.some(c => c.customId === 'store_btn_buy_mentions')
+            );
+            for (const [, pm] of panels) await pm.delete().catch(() => {});
+        } catch {}
+
         const storeColor = storeData.settings?.embedColor || '#2b2d31';
         const mainEmbed = new EmbedBuilder()
             .setTitle('⚙️ لوحة إدارة متجرك والمنشنات المركزية')

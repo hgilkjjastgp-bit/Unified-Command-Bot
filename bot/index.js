@@ -155,13 +155,17 @@ client.on('interactionCreate', async (interaction) => {
             }
         }
     } catch (error) {
+        // خطأ 40060 = تم الرد مسبقاً (يحدث عند تشغيل نسختين من البوت) — نتجاهله بصمت
+        if (error?.code === 40060) return;
         console.error(`❌ خطأ في الأمر /${interaction.commandName}:`, error);
         const errMsg = { content: '❌ حدث خطأ أثناء تنفيذ الأمر.', flags: 64 };
-        if (interaction.replied || interaction.deferred) {
-            await interaction.followUp(errMsg).catch(() => {});
-        } else {
-            await interaction.reply(errMsg).catch(() => {});
-        }
+        try {
+            if (interaction.replied || interaction.deferred) {
+                await interaction.followUp(errMsg).catch(() => {});
+            } else {
+                await interaction.reply(errMsg).catch(() => {});
+            }
+        } catch {}
     }
 });
 

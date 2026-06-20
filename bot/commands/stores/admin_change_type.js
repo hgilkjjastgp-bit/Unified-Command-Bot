@@ -2,17 +2,18 @@ const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('disc
 const config = require('../../config.js');
 
 const CATEGORY_MAP = {
-    VIP:     { id: config.stores.categories.vip.price,     catId: config.stores.categories.vip.id,     emoji: '👑' },
+    VIP:     { catId: config.stores.categories.vip.id,     emoji: '👑' },
     Diamond: { catId: config.stores.categories.diamond.id, emoji: '💎' },
     Gold:    { catId: config.stores.categories.gold.id,    emoji: '🎖' },
     Bronze:  { catId: config.stores.categories.bronze.id,  emoji: '🥉' }
 };
 
-// اربط الـ catId مباشرة من الكونفيج
-CATEGORY_MAP.VIP.catId     = config.stores.categories.vip.id;
-CATEGORY_MAP.Diamond.catId = config.stores.categories.diamond.id;
-CATEGORY_MAP.Gold.catId    = config.stores.categories.gold.id;
-CATEGORY_MAP.Bronze.catId  = config.stores.categories.bronze.id;
+const STORE_EMOJIS = ['👑', '💎', '🎖', '🥉'];
+function replaceStoreEmoji(channelName, newEmoji) {
+    let name = channelName;
+    for (const em of STORE_EMOJIS) name = name.split(em).join('');
+    return `${name.replace(/\s+$/, '')}${newEmoji}`;
+}
 
 module.exports = {
     data: new SlashCommandBuilder()
@@ -49,6 +50,12 @@ module.exports = {
         // ── نقل الروم تلقائياً إلى الكاتجيرو الجديد ──
         await channel.setParent(targetConfig.catId, { lockPermissions: false })
             .catch(err => console.error('[admin_change_type] خطأ في نقل الروم:', err.message));
+
+        // ── تحديث اسم الروم بأموجي الفئة الجديدة ──
+        const newChannelName = replaceStoreEmoji(channel.name, targetConfig.emoji);
+        if (newChannelName !== channel.name)
+            await channel.setName(newChannelName)
+                .catch(err => console.error('[admin_change_type] خطأ في تغيير الاسم:', err.message));
 
         const embed = new EmbedBuilder()
             .setTitle('⚡ تم تعديل فئة المتجر')

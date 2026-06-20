@@ -8,11 +8,21 @@ const tracker = require('./transferTracker.js');
 
 // خريطة الكاتجيروز لنقل الروم عند تغيير النوع
 const TYPE_CATEGORY_MAP = {
-    VIP:     config.stores.categories.vip.id,
-    Diamond: config.stores.categories.diamond.id,
-    Gold:    config.stores.categories.gold.id,
-    Bronze:  config.stores.categories.bronze.id
+    VIP:     { catId: config.stores.categories.vip.id,     emoji: '👑' },
+    Diamond: { catId: config.stores.categories.diamond.id, emoji: '💎' },
+    Gold:    { catId: config.stores.categories.gold.id,    emoji: '🎖' },
+    Bronze:  { catId: config.stores.categories.bronze.id,  emoji: '🥉' }
 };
+
+const STORE_EMOJIS = ['👑', '💎', '🎖', '🥉'];
+
+// استبدال أموجي الكاتجيرو في اسم الروم
+function replaceStoreEmoji(channelName, newEmoji) {
+    let name = channelName;
+    for (const em of STORE_EMOJIS) name = name.split(em).join('');
+    name = name.replace(/\s+$/, '');
+    return `${name}${newEmoji}`;
+}
 
 const BANK_CHANNEL_ID = config.stores.bankChannelId;
 const LOG_CHANNEL_ID  = config.stores.logChannelId;
@@ -187,10 +197,14 @@ module.exports = {
                     actionSummary  = `\`${oldType}\` ← \`${metaData.newType}\``;
                     notifyMsg      = `⚡ <@${userId}> تم تغيير فئة متجرك إلى \`${metaData.newType} Stores\` بنجاح`;
 
-                    // ── نقل الروم تلقائياً للكاتجيرو الصحيح ──
-                    const targetCatId = TYPE_CATEGORY_MAP[metaData.newType];
-                    if (channel && targetCatId) {
-                        await channel.setParent(targetCatId, { lockPermissions: false }).catch(() => {});
+                    const target = TYPE_CATEGORY_MAP[metaData.newType];
+                    if (channel && target) {
+                        // نقل الروم للكاتجيرو الصحيح
+                        await channel.setParent(target.catId, { lockPermissions: false }).catch(() => {});
+                        // تحديث اسم الروم بأموجي الفئة الجديدة
+                        const newName = replaceStoreEmoji(channel.name, target.emoji);
+                        if (newName !== channel.name)
+                            await channel.setName(newName).catch(() => {});
                     }
                     break;
                 }
