@@ -186,7 +186,6 @@ client.on('interactionCreate', async (interaction) => {
         if (id.startsWith('auction_')) {
             if (id === 'auction_buy_start')  return auctionHandler.handleAuctionStart(interaction);
             if (id === 'auction_show_prices')  return auctionHandler.handleShowPrices(interaction);
-            if (id === 'auction_room_status')  return auctionHandler.handleRoomStatus(interaction);
             if (id === 'auction_mention_everyone') return auctionHandler.handleMentionSelection(interaction, 'everyone');
             if (id === 'auction_mention_here')     return auctionHandler.handleMentionSelection(interaction, 'here');
             if (id === 'auction_close_ticket') {

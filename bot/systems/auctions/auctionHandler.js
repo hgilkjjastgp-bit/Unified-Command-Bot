@@ -43,19 +43,14 @@ async function getRoomStatus(guild) {
     return statuses;
 }
 
-// إيجاد أول روم متاح بديل عن الروم المشغول
-async function findAvailableRoom(guild, preferredKey) {
+// إيجاد روم متاح عشوائي من كل الرومات
+async function findAvailableRoom(guild) {
     const statuses = await getRoomStatus(guild);
-
-    // جرّب الروم المفضل أولاً
-    if (!statuses[preferredKey]?.busy) return { key: preferredKey, ...statuses[preferredKey] };
-
-    // جرّب باقي الرومات
-    for (const [key, info] of Object.entries(statuses)) {
-        if (key !== preferredKey && !info.busy) return { key, ...info };
-    }
-
-    return null; // كل الرومات مشغولة
+    const freeRooms = Object.entries(statuses).filter(([, info]) => !info.busy);
+    if (freeRooms.length === 0) return null;
+    // اختر روم عشوائي من الرومات الفاضية
+    const [key, info] = freeRooms[Math.floor(Math.random() * freeRooms.length)];
+    return { key, ...info };
 }
 
 // بناء رسالة الحالة الاحترافية
@@ -81,6 +76,16 @@ function buildRoomStatusText(statuses) {
 // ─────────────────────────────────────
 
 async function sendAuctionPanel(channel) {
+    // حذف أي لوحة قديمة في نفس القناة لتجنب التكرار
+    try {
+        const existing = await channel.messages.fetch({ limit: 20 });
+        const oldPanels = existing.filter(
+            m => m.author.bot && m.components?.length > 0 &&
+                 m.components[0]?.components?.some(c => c.customId === 'auction_buy_start')
+        );
+        for (const [, msg] of oldPanels) await msg.delete().catch(() => {});
+    } catch {}
+
     const embed = new EmbedBuilder()
         .setTitle('📦 لوحة شراء المزادات الرسمية')
         .setDescription(
@@ -93,8 +98,7 @@ async function sendAuctionPanel(channel) {
 
     const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder().setCustomId('auction_buy_start').setLabel('شراء مزاد ✨').setStyle(ButtonStyle.Success),
-        new ButtonBuilder().setCustomId('auction_show_prices').setLabel('أسعار المنشنات 💰').setStyle(ButtonStyle.Primary),
-        new ButtonBuilder().setCustomId('auction_room_status').setLabel('حالة الرومات 📊').setStyle(ButtonStyle.Secondary)
+        new ButtonBuilder().setCustomId('auction_show_prices').setLabel('أسعار المنشنات 💰').setStyle(ButtonStyle.Primary)
     );
 
     await channel.send({ embeds: [embed], components: [row] });
@@ -289,29 +293,18 @@ async function handleTicketMessages(message) {
 
         const imageUrl = message.attachments.size > 0 ? message.attachments.first().url : null;
 
-        // ── فحص توافر الرومات ──
-        const availableRoom = await findAvailableRoom(message.guild, ticketData.duration);
+        // ── فحص توافر الرومات — اختيار عشوائي من الفاضية ──
+        const availableRoom = await findAvailableRoom(message.guild);
 
         if (!availableRoom) {
-            // كل الرومات مشغولة — أظهر الحالة واطلب الانتظار
-            const statuses = await getRoomStatus(message.guild);
-            const statusText = buildRoomStatusText(statuses);
             await message.channel.send(
-                `⏳ **جميع رومات المزادات مشغولة حالياً!**\n\n` +
-                `${statusText}\n` +
+                `⏳ **جميع رومات المزادات مشغولة حالياً!**\n` +
                 `أعد إرسال النموذج عندما يتحرر روم. ✋`
             );
             return; // لا تغيّر الـstep، ليبقى FILL_FORM
         }
 
-        // إذا تغيّر الروم عن المختار في البداية — أخبر المستخدم
-        if (availableRoom.key !== ticketData.duration) {
-            await message.channel.send(
-                `⚠️ **الروم المختار مشغول!**\n` +
-                `✅ تم التحويل تلقائياً إلى <#${availableRoom.channelId}> 🟢`
-            );
-            ticketData.duration = availableRoom.key;
-        }
+        ticketData.duration = availableRoom.key;
 
         ticketData.step = 'PUBLISHING';
         activeTickets.set(message.channel.id, ticketData);
@@ -337,14 +330,8 @@ async function handleAdminConfirmPayment(interaction) {
     ticketData.step = 'FILL_FORM';
     activeTickets.set(interaction.channel.id, ticketData);
 
-    // ── فحص حالة الرومات الآن ──
-    const statuses = await getRoomStatus(interaction.guild);
-    const statusText = buildRoomStatusText(statuses);
-
     const formMsg =
         `✅ **تم تأكيد الدفع بنجاح!**\n\n` +
-        `${statusText}\n` +
-        `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n` +
         `يا <@${ticketData.userId}> انسخ النموذج التالي وأرسله **مع صورة المنتج**:\n\n` +
         `\`\`\`\nالمنتج:\nالسعر:\nالمنشن: ${ticketData.mentionLabel}\n\`\`\``;
 
@@ -420,30 +407,18 @@ async function handleManualPublish(interaction) {
 
     await interaction.deferReply({ flags: 64 });
 
-    // فحص توافر الرومات
-    const availableRoom = await findAvailableRoom(interaction.guild, durationKey);
+    // فحص توافر الرومات — اختيار عشوائي من الفاضية
+    const availableRoom = await findAvailableRoom(interaction.guild);
 
     if (!availableRoom) {
-        const statuses    = await getRoomStatus(interaction.guild);
-        const statusText  = buildRoomStatusText(statuses);
         return interaction.editReply({
-            content: `❌ **لا يوجد روم متاح حالياً!**\n\n${statusText}`
+            content: `❌ **لا يوجد روم متاح حالياً! جميع الرومات مشغولة.**`
         });
     }
 
-    const finalDuration = availableRoom.key;
-    if (finalDuration !== durationKey) {
-        await interaction.editReply({
-            content: `⚠️ الروم المختار مشغول، تم التحويل إلى <#${availableRoom.channelId}>`
-        });
-    }
-
-    const fakeData = { duration: finalDuration, mentionLabel };
+    const fakeData = { duration: availableRoom.key, mentionLabel };
     await publishAuction(interaction.channel, fakeData, item, price, image?.url ?? null);
-
-    if (finalDuration === durationKey) {
-        await interaction.editReply({ content: '✅ تم النشر اليدوي بنجاح!' });
-    }
+    await interaction.editReply({ content: `✅ تم النشر اليدوي بنجاح في <#${availableRoom.channelId}>!` });
 }
 
 // ─────────────────────────────────────
@@ -459,7 +434,6 @@ module.exports = {
     sendAuctionPanel,
     handleAuctionStart,
     handleShowPrices,
-    handleRoomStatus,
     handleMentionSelection,
     handleTicketMessages,
     handleAdminConfirmPayment,
