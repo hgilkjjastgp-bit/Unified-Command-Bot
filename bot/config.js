@@ -56,10 +56,10 @@ module.exports = {
         bankChannelId:     "1509569386850291773",
         logChannelId:      "1513609705551954041",
         categories: {
-            vip:     { name: "VIP",      emoji: "👑", id: "1509736323391688714", everyone: 30, here: 20, price: 2000000 },
-            diamond: { name: "دايموند",  emoji: "💎", id: "1509736509459136523", everyone: 20, here: 10, price: 1500000 },
-            gold:    { name: "ذهبي",     emoji: "🎖", id: "1509736670499700757", everyone: 15, here: 13, price: 1000000 },
-            bronze:  { name: "برونزي",   emoji: "🥉", id: "1509736906727100469", everyone: 10, here: 5,  price: 800000  }
+            vip:     { name: "VIP",     emoji: "👑", id: "1509736323391688714", everyone: 30, here: 20, price: 2000000 },
+            diamond: { name: "Diamond", emoji: "💎", id: "1509736509459136523", everyone: 20, here: 10, price: 1500000 },
+            gold:    { name: "Gold",    emoji: "🎖", id: "1509736670499700757", everyone: 15, here: 13, price: 1000000 },
+            bronze:  { name: "Bronze",  emoji: "🥉", id: "1509736906727100469", everyone: 10, here: 5,  price: 800000  }
         },
         // أسعار خدمات لوحة الإدارة
         servicePrices: {

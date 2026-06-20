@@ -72,7 +72,7 @@ async function handleTicketButton(interaction) {
                 `مرحباً ${interaction.user}!\n\n` +
                 `أهلاً بك في نظام شراء المتاجر.\n` +
                 `لو عندك أسئلة انتظر المسؤولين.\n\n` +
-                `🗂️ **نوع المتجر المختار:** \`${selectedCat.name}\`\n` +
+                `🗂️ **نوع المتجر المختار:** ${selectedCat.emoji} \`${selectedCat.name} Stores\`\n` +
                 `💰 **السعر:** \`${selectedCat.price.toLocaleString()}\` كريدت`
             )
             .setColor('#5865f2');

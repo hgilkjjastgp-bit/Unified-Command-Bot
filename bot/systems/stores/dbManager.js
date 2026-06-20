@@ -6,6 +6,14 @@ const { EmbedBuilder } = require('discord.js');
 const config  = require('../../config.js');
 const tracker = require('./transferTracker.js');
 
+// خريطة الكاتجيروز لنقل الروم عند تغيير النوع
+const TYPE_CATEGORY_MAP = {
+    VIP:     config.stores.categories.vip.id,
+    Diamond: config.stores.categories.diamond.id,
+    Gold:    config.stores.categories.gold.id,
+    Bronze:  config.stores.categories.bronze.id
+};
+
 const BANK_CHANNEL_ID = config.stores.bankChannelId;
 const LOG_CHANNEL_ID  = config.stores.logChannelId;
 const BANK_ACCOUNT_ID = config.ownerId;
@@ -174,10 +182,16 @@ module.exports = {
                     break;
                 }
                 case 'change_store_type': {
-                    const oldType = store.storeType;
+                    const oldType  = store.storeType;
                     store.storeType = metaData.newType;
-                    actionSummary = `\`${oldType}\` ← \`${metaData.newType}\``;
-                    notifyMsg = `⚡ <@${userId}> تم تغيير فئة متجرك إلى \`${metaData.newType}\` بنجاح`;
+                    actionSummary  = `\`${oldType}\` ← \`${metaData.newType}\``;
+                    notifyMsg      = `⚡ <@${userId}> تم تغيير فئة متجرك إلى \`${metaData.newType} Stores\` بنجاح`;
+
+                    // ── نقل الروم تلقائياً للكاتجيرو الصحيح ──
+                    const targetCatId = TYPE_CATEGORY_MAP[metaData.newType];
+                    if (channel && targetCatId) {
+                        await channel.setParent(targetCatId, { lockPermissions: false }).catch(() => {});
+                    }
                     break;
                 }
                 case 'buy_discount_box': {

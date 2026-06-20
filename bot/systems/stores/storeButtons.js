@@ -59,7 +59,7 @@ module.exports = {
         const storeData = global.storesData?.get(message.channel.id);
         if (!storeData) return;
 
-        const allowedTypes = ['VIP', 'دايموند', 'ذهبي', 'برونزي'];
+        const allowedTypes = ['VIP', 'Diamond', 'Gold', 'Bronze'];
         if (!allowedTypes.includes(storeData.storeType)) return;
         if (message.author.id !== storeData.ownerId) {
             return message.reply({ content: '❌ هذا الأمر مخصص لصاحب المتجر فقط!', flags: 64 }).catch(() => {});
@@ -351,27 +351,30 @@ module.exports = {
         // ─── تغيير نوع المتجر ───
         if (interaction.customId === 'store_opt_change_type') {
             const prices = {
-                VIP:      getDiscountedPrice(storeData, 2000000, 'change_store_type'),
-                دايموند:  getDiscountedPrice(storeData, 1800000, 'change_store_type'),
-                ذهبي:     getDiscountedPrice(storeData, 1500000, 'change_store_type'),
-                برونزي:   getDiscountedPrice(storeData, 1000000, 'change_store_type')
+                VIP:     getDiscountedPrice(storeData, 2000000, 'change_store_type'),
+                Diamond: getDiscountedPrice(storeData, 1800000, 'change_store_type'),
+                Gold:    getDiscountedPrice(storeData, 1500000, 'change_store_type'),
+                Bronze:  getDiscountedPrice(storeData, 1000000, 'change_store_type')
             };
+            const fmt = (n) => `${(n/1000000).toFixed(1)}m`;
             const typeRow  = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId(`store_type_VIP_${prices['VIP']}`).setLabel(`👑 VIP — ${(prices['VIP']/1000000).toFixed(1)}m`).setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId(`store_type_دايموند_${prices['دايموند']}`).setLabel(`💎 دايموند — ${(prices['دايموند']/1000000).toFixed(1)}m`).setStyle(ButtonStyle.Success)
+                new ButtonBuilder().setCustomId(`store_type_VIP_${prices.VIP}`).setLabel(`👑 VIP — ${fmt(prices.VIP)}`).setStyle(ButtonStyle.Primary),
+                new ButtonBuilder().setCustomId(`store_type_Diamond_${prices.Diamond}`).setLabel(`💎 Diamond — ${fmt(prices.Diamond)}`).setStyle(ButtonStyle.Success)
             );
             const typeRow2 = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId(`store_type_ذهبي_${prices['ذهبي']}`).setLabel(`🎖 ذهبي — ${(prices['ذهبي']/1000000).toFixed(1)}m`).setStyle(ButtonStyle.Primary),
-                new ButtonBuilder().setCustomId(`store_type_برونزي_${prices['برونزي']}`).setLabel(`🥉 برونزي — ${(prices['برونزي']/1000000).toFixed(1)}m`).setStyle(ButtonStyle.Danger)
+                new ButtonBuilder().setCustomId(`store_type_Gold_${prices.Gold}`).setLabel(`🎖 Gold — ${fmt(prices.Gold)}`).setStyle(ButtonStyle.Primary),
+                new ButtonBuilder().setCustomId(`store_type_Bronze_${prices.Bronze}`).setLabel(`🥉 Bronze — ${fmt(prices.Bronze)}`).setStyle(ButtonStyle.Danger)
             );
             return interaction.update({ content: `فئة متجرك الحالية: \`${storeData.storeType}\`. اختر الفئة الجديدة:`, embeds: [], components: [typeRow, typeRow2] });
         }
 
         if (interaction.customId.startsWith('store_type_')) {
             await interaction.deferReply({ flags: 64 });
-            const parts    = interaction.customId.split('_');
-            const newType  = parts[2];
-            const rawPrice = parseInt(parts[3]);
+            // customId شكله: store_type_Diamond_1800000
+            const withoutPrefix = interaction.customId.replace('store_type_', '');
+            const lastUnderscore = withoutPrefix.lastIndexOf('_');
+            const newType  = withoutPrefix.slice(0, lastUnderscore);
+            const rawPrice = parseInt(withoutPrefix.slice(lastUnderscore + 1));
             if (storeData.storeType === newType) return interaction.editReply({ content: '❌ متجرك مسجل بالفعل على نفس الفئة!' });
             const finalPrice = getDiscountedPrice(storeData, rawPrice, 'change_store_type');
             const code       = dbManager.createPendingTransaction(channelId, interaction.user.id, finalPrice, 'change_store_type', { newType });
@@ -379,7 +382,7 @@ module.exports = {
                 title: `تغيير فئة المتجر إلى ${newType}`,
                 lines: [
                     `⚡ **الفئة الحالية:** \`${storeData.storeType}\``,
-                    `🆕 **الفئة الجديدة:** \`${newType}\``
+                    `🆕 **الفئة الجديدة:** \`${newType} Stores\``
                 ],
                 basePrice: finalPrice, code
             });
