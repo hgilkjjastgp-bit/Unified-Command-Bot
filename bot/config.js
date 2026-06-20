@@ -60,6 +60,19 @@ module.exports = {
             diamond: { name: "دايموند",  emoji: "💎", id: "1509736509459136523", everyone: 20, here: 10, price: 1500000 },
             gold:    { name: "ذهبي",     emoji: "🎖", id: "1509736670499700757", everyone: 15, here: 13, price: 1000000 },
             bronze:  { name: "برونزي",   emoji: "🥉", id: "1509736906727100469", everyone: 10, here: 5,  price: 800000  }
+        },
+        // أسعار خدمات لوحة الإدارة
+        servicePrices: {
+            mention_everyone:  600000,
+            mention_here:      500000,
+            change_name:       300000,
+            change_owner:      500000,
+            remove_warning:    400000,
+            autopost_day:      700000,
+            autopost_day2:     1500000,
+            autopost_week:     3000000,
+            autoline:          100000,
+            discount_box:      500000
         }
     }
 };

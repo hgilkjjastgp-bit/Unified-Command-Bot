@@ -34,11 +34,14 @@ const { loadStoresData, saveStoresData } = require('./systems/stores/storesData.
 global.saveStoresData = saveStoresData;
 loadStoresData();
 
+const { loadPrices } = require('./systems/pricesManager.js');
+loadPrices();
+
 // ─────────────────────────────────────
 //         تحميل الأوامر (Slash Commands)
 // ─────────────────────────────────────
 
-const commandFolders = ['posts', 'auctions', 'stores'];
+const commandFolders = ['posts', 'auctions', 'stores', 'admin'];
 
 for (const folder of commandFolders) {
     const folderPath = path.join(__dirname, 'commands', folder);

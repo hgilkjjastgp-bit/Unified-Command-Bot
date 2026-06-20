@@ -163,8 +163,9 @@ module.exports = {
 
         // ─── شراء منشن ───
         if (interaction.customId === 'store_btn_buy_mentions') {
-            const pE = getDiscountedPrice(storeData, 600000, 'buy_mentions');
-            const pH = getDiscountedPrice(storeData, 500000, 'buy_mentions');
+            const sp = require('../../config.js').stores.servicePrices;
+            const pE = getDiscountedPrice(storeData, sp.mention_everyone, 'buy_mentions');
+            const pH = getDiscountedPrice(storeData, sp.mention_here,     'buy_mentions');
             const mentEmbed = new EmbedBuilder()
                 .setTitle('🛒 شحن رصيد منشنات المتجر')
                 .setDescription(`📢 **سعر @everyone:** \`${pE.toLocaleString()}\` كريدت\n🔔 **سعر @here:** \`${pH.toLocaleString()}\` كريدت`)
@@ -193,7 +194,8 @@ module.exports = {
             const parts       = interaction.customId.split('_');
             const mentionType = parts[3];
             const count       = parseInt(parts[4]);
-            const singlePrice = mentionType === 'everyone' ? 600000 : 500000;
+            const sp          = require('../../config.js').stores.servicePrices;
+            const singlePrice = mentionType === 'everyone' ? sp.mention_everyone : sp.mention_here;
             const basePrice   = getDiscountedPrice(storeData, singlePrice * count, 'buy_mentions');
             const code        = dbManager.createPendingTransaction(channelId, interaction.user.id, basePrice, 'buy_mentions', { mentionType, count });
             await sendInvoiceWithTransfer(interaction, {
