@@ -104,7 +104,7 @@ async function handleButton(interaction) {
         const invoiceMsg =
             `💳 **تفاصيل الفاتورة والتحويل لنوع (${type}):**\n\n` +
             `يرجى التوجه إلى روم الأوامر <#${cfg.commandsChannelId}> ونسخ الأمر التالي للتحويل المالي:\n` +
-            `\`💵 c ${config.ownerId} ${taxPrice}\`\n\n` +
+            `\`c ${config.ownerId} ${taxPrice}\`\n\n` +
             `⚠️ **ملاحظة:** سيقوم النظام بمراقبة التحويل تلقائياً ونشر طلبك فوراً في روم المنشورات.`;
 
         return interaction.update({ content: invoiceMsg, components: [], flags: 64 });

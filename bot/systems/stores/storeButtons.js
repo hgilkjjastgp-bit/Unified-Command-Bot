@@ -256,6 +256,9 @@ module.exports = {
 
         // ─── إزالة تحذير ───
         if (interaction.customId === 'store_opt_remove_warnings') {
+            if (!storeData.warnings || storeData.warnings <= 0) {
+                return interaction.reply({ content: '✅ متجرك نظيف — لا يوجد تحذيرات لإزالتها!', flags: 64 });
+            }
             await interaction.deferReply({ flags: 64 });
             const basePrice = getDiscountedPrice(storeData, 400000, 'remove_warnings');
             const code      = dbManager.createPendingTransaction(channelId, interaction.user.id, basePrice, 'remove_warnings', { count: 1 });

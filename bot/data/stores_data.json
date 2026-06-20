@@ -1,17 +1,17 @@
 {
   "1517619953983815912": {
     "storeId": "1517619953983815912",
-    "ownerId": "1222904544938295338",
+    "ownerId": "1497036105340420200",
     "storeType": "برونزي",
     "warnings": 0,
     "mentions": {
       "everyoneLeft": 10,
-      "hereLeft": 5
+      "hereLeft": 7
     },
     "cooldowns": {
       "lastMentionTime": 0,
       "lastMentionType": null,
-      "lastMenuOpenTime": 1781899215717
+      "lastMenuOpenTime": 1781973313133
     },
     "settings": {
       "autoLine": false,
@@ -32,8 +32,8 @@
       "speedHours": 1
     },
     "discountBox": {
-      "usedCount": 0,
-      "lastUsedTime": 0
+      "usedCount": 1,
+      "lastUsedTime": 1781973218243
     },
     "pendingTransactions": null
   }

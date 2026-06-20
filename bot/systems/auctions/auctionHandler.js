@@ -269,7 +269,7 @@ async function handleTicketMessages(message) {
             .setFooter({ text: 'أرسل المبلغ بالضبط لتأكيد الدفع تلقائياً' });
 
         await message.channel.send({ embeds: [paymentEmbed] });
-        await message.channel.send({ content: `\`\`\`\nc ${config.ownerId} ${taxPrice}\`\`\`` });
+        await message.channel.send({ content: `\`c ${config.ownerId} ${taxPrice}\`` });
         return;
     }
 
