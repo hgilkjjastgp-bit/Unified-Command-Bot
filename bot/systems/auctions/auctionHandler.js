@@ -317,7 +317,7 @@ async function handleTicketMessages(message) {
             return; // لا تغيّر الـstep، ليبقى FILL_FORM
         }
 
-        ticketData.duration = availableRoom.key;
+        ticketData.roomKey = availableRoom.key;
 
         ticketData.step = 'PUBLISHING';
         activeTickets.set(message.channel.id, ticketData);
@@ -356,7 +356,9 @@ async function handleAdminConfirmPayment(interaction) {
 // ─────────────────────────────────────
 
 async function publishAuction(channel, data, item, price, imageUrl) {
-    const auctionChannelId = cfg.channels[data.duration];
+    // roomKey = الروم المتاح، duration = المدة اللي اختارها المستخدم
+    const roomKey          = data.roomKey ?? data.duration;
+    const auctionChannelId = cfg.channels[roomKey];
     const auctionChannel   = channel.guild.channels.cache.get(auctionChannelId);
     const durationConfig   = cfg.durations[data.duration];
 
@@ -428,7 +430,7 @@ async function handleManualPublish(interaction) {
         });
     }
 
-    const fakeData = { duration: availableRoom.key, mentionLabel };
+    const fakeData = { duration: durationKey, roomKey: availableRoom.key, mentionLabel };
     await publishAuction(interaction.channel, fakeData, item, price, image?.url ?? null);
     await interaction.editReply({ content: `✅ تم النشر اليدوي بنجاح في <#${availableRoom.channelId}>!` });
 }

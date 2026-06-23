@@ -59,7 +59,7 @@ async function monitorAuctionTransfers(message) {
             const formText =
                 `✅ **تم تأكيد الدفع بنجاح!**\n\n` +
                 `الآن يا <@${ticketData.userId}> انسخ هذا النموذج وعبه (أرسله في رسالة واحدة مع الصورة):\n\n` +
-                `\`\`\`\nالمنتج:\nالسعر:\nالمنشن: ${ticketData.mentionLabel}\n\`\`\`\n` +
+                `\`\`\`\nالمنتج:\nالسعر:\n\`\`\`\n` +
                 `*يرجى إرفاق صورة المنتج مع الرسالة.*`;
 
             await channel.send({ content: formText });
