@@ -1,3 +1,4 @@
+// امر ارسال لوحة شراء المتاجر
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 
 module.exports = {

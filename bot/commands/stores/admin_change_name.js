@@ -1,3 +1,4 @@
+// تغير اسم متجر يدوي
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 
 const EMOJI_MAP = { 'VIP': '👑', 'دايموند': '💎', 'ذهبي': '🥇', 'برونزي': '🥉' };

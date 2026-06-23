@@ -1,3 +1,4 @@
+// امر تغير نوع متجر يدوي
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 const config = require('../../config.js');
 

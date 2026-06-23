@@ -1,3 +1,4 @@
+// امر جلب بيانات متجر
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 
 module.exports = {

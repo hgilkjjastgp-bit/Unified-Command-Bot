@@ -2,6 +2,7 @@
 //         نظام رقابة المنشنات في رومات المتاجر
 // ═══════════════════════════════════════════════
 
+
 const { EmbedBuilder, PermissionFlagsBits } = require('discord.js');
 const config = require('../../config.js');
 

@@ -2,6 +2,7 @@
 //         نظام معاملات المتاجر المالية
 // ═══════════════════════════════════════════════
 
+
 const { EmbedBuilder } = require('discord.js');
 const config  = require('../../config.js');
 const tracker = require('./transferTracker.js');

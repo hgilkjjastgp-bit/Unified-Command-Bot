@@ -1,3 +1,4 @@
+// امر نقل ملكية متجر يدوي
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 
 module.exports = {

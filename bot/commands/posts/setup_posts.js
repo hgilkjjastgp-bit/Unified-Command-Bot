@@ -1,3 +1,4 @@
+// امر لوحة شراء منشورات
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 
 module.exports = {

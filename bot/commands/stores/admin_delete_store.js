@@ -1,3 +1,4 @@
+// امر حذف متجر نهائي
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 
 module.exports = {

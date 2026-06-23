@@ -1,3 +1,4 @@
+// امر تشغيل نشر تلقائي متاجر يدوي
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 
 module.exports = {

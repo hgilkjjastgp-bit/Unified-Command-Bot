@@ -1,3 +1,4 @@
+// امر انشاء متجر احتياطي 
 const { SlashCommandBuilder, PermissionFlagsBits, ChannelType, EmbedBuilder } = require('discord.js');
 const { createDefaultStoreData } = require('../../systems/stores/storesData.js');
 

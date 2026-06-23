@@ -2,6 +2,7 @@
 //         نظام النشر التلقائي للمتاجر
 // ═══════════════════════════════════════════════
 
+
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
 const targetWords = [

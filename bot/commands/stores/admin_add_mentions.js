@@ -1,3 +1,4 @@
+// امر زيادة رصيد منشنات لي متاجر
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 
 module.exports = {

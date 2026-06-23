@@ -1,3 +1,4 @@
+// نشر منشور احاطياتي يدوي
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 
 module.exports = {

@@ -1,3 +1,4 @@
+// تعديل بوكس خصم متجر يدوي
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 
 module.exports = {

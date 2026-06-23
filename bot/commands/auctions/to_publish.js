@@ -1,3 +1,4 @@
+// امر نشر مزاد يدوي احاطياتي
 const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 
 module.exports = {

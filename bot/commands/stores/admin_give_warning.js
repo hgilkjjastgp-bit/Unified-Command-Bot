@@ -1,3 +1,4 @@
+// امر اعطاء تحذير لي متجر
 const { SlashCommandBuilder, PermissionFlagsBits, EmbedBuilder } = require('discord.js');
 
 module.exports = {

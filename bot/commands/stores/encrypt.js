@@ -1,3 +1,4 @@
+// امر فتح لوحة التشفير اليدوي
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle } = require('discord.js');
 const { encryptText } = require('../../systems/stores/autoPostManager.js');
 
