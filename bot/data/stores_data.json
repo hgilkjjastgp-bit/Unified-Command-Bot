@@ -2,7 +2,7 @@
   "1517619953983815912": {
     "storeId": "1517619953983815912",
     "ownerId": "1222904544938295338",
-    "storeType": "VIP",
+    "storeType": "Gold",
     "warnings": 0,
     "mentions": {
       "everyoneLeft": 10,
@@ -11,7 +11,7 @@
     "cooldowns": {
       "lastMentionTime": 0,
       "lastMentionType": null,
-      "lastMenuOpenTime": 1781996524108
+      "lastMenuOpenTime": 1782177197152
     },
     "settings": {
       "autoLine": false,

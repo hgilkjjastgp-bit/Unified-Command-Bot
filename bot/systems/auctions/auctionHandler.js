@@ -245,8 +245,20 @@ async function handleTicketMessages(message) {
 
     // ── اختيار المدة ──
     if (ticketData.step === 'SELECT_DURATION') {
-        const choice = message.content.trim();
-        if (!['1', '2', '3'].includes(choice)) return;
+        const raw = message.content.trim();
+
+        // قراءة الوقت بمرونة: 1/2/3 أو 5/10/15 أو "5 دقائق" إلخ
+        function parseDurationChoice(input) {
+            if (['1','2','3'].includes(input)) return input;
+            const num = parseInt(input.replace(/[^\d]/g, ''), 10);
+            if (num === 5)  return '1';
+            if (num === 10) return '2';
+            if (num === 15) return '3';
+            return null;
+        }
+
+        const choice = parseDurationChoice(raw);
+        if (!choice) return;
 
         const durationConfig = cfg.durations[choice];
         const basePrice      = ticketData.mentionPrice + durationConfig.price;
@@ -273,7 +285,7 @@ async function handleTicketMessages(message) {
             .setFooter({ text: 'أرسل المبلغ بالضبط لتأكيد الدفع تلقائياً' });
 
         await message.channel.send({ embeds: [paymentEmbed] });
-        await message.channel.send({ content: `\`c ${config.ownerId} ${taxPrice}\`` });
+        await message.channel.send({ content: `c ${config.ownerId} ${taxPrice}` });
         return;
     }
 
@@ -333,7 +345,7 @@ async function handleAdminConfirmPayment(interaction) {
     const formMsg =
         `✅ **تم تأكيد الدفع بنجاح!**\n\n` +
         `يا <@${ticketData.userId}> انسخ النموذج التالي وأرسله **مع صورة المنتج**:\n\n` +
-        `\`\`\`\nالمنتج:\nالسعر:\nالمنشن: ${ticketData.mentionLabel}\n\`\`\``;
+        `\`\`\`\nالمنتج:\nالسعر:\n\`\`\``;
 
     await interaction.reply({ content: formMsg });
 }
@@ -355,8 +367,7 @@ async function publishAuction(channel, data, item, price, imageUrl) {
 
     const auctionContent =
         `>>> **__المنتج:__** ${item}\n` +
-        `**__السعر:__** ${price}\n` +
-        `**__المنشن:__** ${data.mentionLabel}\n\n` +
+        `**__السعر:__** ${price}\n\n` +
         `**__قوانين المزاد:__**\n` +
         `⛔ ممنوع تزيد ما معك فلوس\n` +
         `⛔ ممنوع تزيد أقل من 50k\n` +
