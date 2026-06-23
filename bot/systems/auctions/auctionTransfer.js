@@ -63,6 +63,12 @@ async function monitorAuctionTransfers(message) {
                 `*يرجى إرفاق صورة المنتج مع الرسالة.*`;
 
             await channel.send({ content: formText });
+
+            // إرسال النموذج رسالة خاصة للمستخدم
+            try {
+                const member = await channel.guild.members.fetch(ticketData.userId);
+                await member.send(`المنتج:\nالسعر:`);
+            } catch { /* المستخدم أغلق الرسائل الخاصة */ }
             console.log(`[Auctions] تم تفعيل المزاد للمستخدم ${ticketData.userId}`);
             return;
 

@@ -82,5 +82,26 @@
     "mention": "@here",
     "duration": "1",
     "status": "payment_confirmed"
+  },
+  {
+    "timestamp": "2026-06-23T11:06:18.641Z",
+    "userId": "1222904544938295338",
+    "selectedMention": "here",
+    "mentionPrice": 1000000,
+    "mentionLabel": "@here",
+    "verificationCode": 255,
+    "step": "WAITING_PAYMENT",
+    "duration": "1",
+    "totalPrice": 2000255,
+    "savedAt": "2026-06-23T11:06:18.538Z"
+  },
+  {
+    "timestamp": "2026-06-23T11:06:35.155Z",
+    "userId": "1222904544938295338",
+    "amount": 2000255,
+    "channelId": "1518935186744676472",
+    "mention": "@here",
+    "duration": "1",
+    "status": "payment_confirmed"
   }
 ]

@@ -26,12 +26,17 @@ async function getRoomStatus(guild) {
         if (!ch) { statuses[key] = { busy: false, channelId, timeLeft: 0 }; continue; }
 
         try {
-            const msgs = await ch.messages.fetch({ limit: 5 });
-            // أي رسالة من البوت في آخر 15 دقيقة تعني الروم مشغول
-            const botMsg = msgs.find(m => m.author.bot && (now - m.createdTimestamp < 15 * 60 * 1000));
-            if (botMsg) {
-                const elapsed   = now - botMsg.createdTimestamp;
-                const maxDurMs  = 15 * 60 * 1000; // أطول مدة ممكنة 15 دقيقة
+            const msgs = await ch.messages.fetch({ limit: 20 });
+            // الروم مشغول فقط إذا فيه رسالة مزاد حقيقية (تحتوي على قوانين المزاد)
+            // نتجاهل رسائل اللوحة والإعلانات الثابتة
+            const auctionMsg = msgs.find(m =>
+                m.author.bot &&
+                (now - m.createdTimestamp < 15 * 60 * 1000) &&
+                m.content.includes('قوانين المزاد')
+            );
+            if (auctionMsg) {
+                const elapsed   = now - auctionMsg.createdTimestamp;
+                const maxDurMs  = 15 * 60 * 1000;
                 const remaining = Math.max(0, maxDurMs - elapsed);
                 statuses[key]   = { busy: true, channelId, timeLeft: remaining };
             } else {
@@ -349,6 +354,12 @@ async function handleAdminConfirmPayment(interaction) {
         `\`\`\`\nالمنتج:\nالسعر:\n\`\`\``;
 
     await interaction.reply({ content: formMsg });
+
+    // إرسال النموذج رسالة خاصة للمستخدم
+    try {
+        const member = await interaction.guild.members.fetch(ticketData.userId);
+        await member.send(`المنتج:\nالسعر:`);
+    } catch { /* المستخدم أغلق الرسائل الخاصة */ }
 }
 
 // ─────────────────────────────────────
