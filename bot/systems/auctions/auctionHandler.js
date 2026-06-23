@@ -381,7 +381,8 @@ async function publishAuction(channel, data, item, price, imageUrl) {
 
     const auctionContent =
         `>>> **__المنتج:__** ${item}\n` +
-        `**__السعر:__** ${price}\n\n` +
+        `**__السعر:__** ${price}\n` +
+        `**__المنشن:__** **${data.mentionLabel}**\n\n` +
         `**__قوانين المزاد:__**\n` +
         `⛔ ممنوع تزيد ما معك فلوس\n` +
         `⛔ ممنوع تزيد أقل من 50k\n` +
@@ -390,7 +391,7 @@ async function publishAuction(channel, data, item, price, imageUrl) {
         `⏳ **ينتهي المزاد:** <t:${endTime}:R>`;
 
     const sentMsg = await auctionChannel.send({
-        content: `${data.mentionLabel}\n${auctionContent}`,
+        content: auctionContent,
         files: imageUrl ? [imageUrl] : []
     });
 
