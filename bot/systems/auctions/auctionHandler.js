@@ -390,6 +390,16 @@ async function publishAuction(channel, data, item, price, imageUrl) {
         `⛔ ممنوع الكلام خارج موضوع المزاد\n\n` +
         `⏳ **ينتهي المزاد:** <t:${endTime}:R>`;
 
+    // قفل الروم عند بدء المزاد
+    try {
+        await auctionChannel.permissionOverwrites.edit(auctionChannel.guild.id, {
+            SendMessages: false
+        });
+        console.log(`[Auctions] تم قفل الروم: ${auctionChannel.name}`);
+    } catch (e) {
+        console.error('[Auctions] خطأ في قفل الروم:', e);
+    }
+
     const sentMsg = await auctionChannel.send({
         content: auctionContent,
         files: imageUrl ? [imageUrl] : []
@@ -400,13 +410,24 @@ async function publishAuction(channel, data, item, price, imageUrl) {
         `⏳ ينتهي المزاد <t:${endTime}:R> وبعدها يُغلق التكت تلقائياً.`
     );
 
-    // مسح الرسائل وإغلاق التكت بعد انتهاء الوقت
+    // مسح الرسائل وإغلاق التكت وفتح الروم بعد انتهاء الوقت
     setTimeout(async () => {
         try {
             const msgs     = await auctionChannel.messages.fetch({ limit: 50 });
             const toDelete = msgs.filter(m => m.id !== sentMsg.id && !m.author.bot);
             if (toDelete.size > 0) await auctionChannel.bulkDelete(toDelete, true).catch(() => {});
-            setTimeout(() => sentMsg.delete().catch(() => {}), 5000);
+            setTimeout(async () => {
+                sentMsg.delete().catch(() => {});
+                // فتح الروم بعد حذف رسالة المزاد
+                try {
+                    await auctionChannel.permissionOverwrites.edit(auctionChannel.guild.id, {
+                        SendMessages: null
+                    });
+                    console.log(`[Auctions] تم فتح الروم: ${auctionChannel.name}`);
+                } catch (e) {
+                    console.error('[Auctions] خطأ في فتح الروم:', e);
+                }
+            }, 5000);
             await closeTicket(channel);
         } catch (e) {
             console.error('[Auctions] خطأ في نظام المسح:', e);
