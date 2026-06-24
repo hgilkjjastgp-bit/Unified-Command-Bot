@@ -390,14 +390,14 @@ async function publishAuction(channel, data, item, price, imageUrl) {
         `⛔ ممنوع الكلام خارج موضوع المزاد\n\n` +
         `⏳ **ينتهي المزاد:** <t:${endTime}:R>`;
 
-    // قفل الروم عند بدء المزاد
+    // فتح الروم عند بدء المزاد (الرومات مقفلة بشكل افتراضي)
     try {
         await auctionChannel.permissionOverwrites.edit(auctionChannel.guild.id, {
-            SendMessages: false
+            SendMessages: true
         });
-        console.log(`[Auctions] تم قفل الروم: ${auctionChannel.name}`);
+        console.log(`[Auctions] تم فتح الروم: ${auctionChannel.name}`);
     } catch (e) {
-        console.error('[Auctions] خطأ في قفل الروم:', e);
+        console.error('[Auctions] خطأ في فتح الروم:', e);
     }
 
     const sentMsg = await auctionChannel.send({
@@ -410,7 +410,7 @@ async function publishAuction(channel, data, item, price, imageUrl) {
         `⏳ ينتهي المزاد <t:${endTime}:R> وبعدها يُغلق التكت تلقائياً.`
     );
 
-    // مسح الرسائل وإغلاق التكت وفتح الروم بعد انتهاء الوقت
+    // مسح الرسائل وقفل الروم وإغلاق التكت بعد انتهاء الوقت
     setTimeout(async () => {
         try {
             const msgs     = await auctionChannel.messages.fetch({ limit: 50 });
@@ -418,14 +418,14 @@ async function publishAuction(channel, data, item, price, imageUrl) {
             if (toDelete.size > 0) await auctionChannel.bulkDelete(toDelete, true).catch(() => {});
             setTimeout(async () => {
                 sentMsg.delete().catch(() => {});
-                // فتح الروم بعد حذف رسالة المزاد
+                // قفل الروم بعد انتهاء المزاد
                 try {
                     await auctionChannel.permissionOverwrites.edit(auctionChannel.guild.id, {
-                        SendMessages: null
+                        SendMessages: false
                     });
-                    console.log(`[Auctions] تم فتح الروم: ${auctionChannel.name}`);
+                    console.log(`[Auctions] تم قفل الروم: ${auctionChannel.name}`);
                 } catch (e) {
-                    console.error('[Auctions] خطأ في فتح الروم:', e);
+                    console.error('[Auctions] خطأ في قفل الروم:', e);
                 }
             }, 5000);
             await closeTicket(channel);
